@@ -9,8 +9,8 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-import { NativeModules, NativeEventEmitter, Platform } from "react-native";
-import * as EPToolkit from "./utils/EPToolkit";
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import * as EPToolkit from './utils/EPToolkit';
 var RNUSBPrinter = NativeModules.RNUSBPrinter;
 var RNBLEPrinter = NativeModules.RNBLEPrinter;
 var RNNetPrinter = NativeModules.RNNetPrinter;
@@ -19,38 +19,38 @@ var textTo64Buffer = function (text, opts) {
         beep: false,
         cut: false,
         tailingLine: false,
-        encoding: "UTF8",
+        encoding: 'UTF8'
     };
     var options = __assign(__assign({}, defaultOptions), opts);
     var buffer = EPToolkit.exchange_text(text, options);
-    return buffer.toString("base64");
+    return buffer.toString('base64');
 };
 var billTo64Buffer = function (text, opts) {
     var defaultOptions = {
         beep: true,
         cut: true,
-        encoding: "UTF8",
-        tailingLine: true,
+        encoding: 'UTF8',
+        tailingLine: true
     };
     var options = __assign(__assign({}, defaultOptions), opts);
     var buffer = EPToolkit.exchange_text(text, options);
-    return buffer.toString("base64");
+    return buffer.toString('base64');
 };
-var textPreprocessingIOS = function (text, isCut) {
+var textPreprocessingIOS = function (text) {
     var options = {
         beep: true,
-        cut: isCut,
+        cut: true
     };
     return {
         text: text
-            .replace(/<\/?CB>/g, "")
-            .replace(/<\/?CM>/g, "")
-            .replace(/<\/?CD>/g, "")
-            .replace(/<\/?C>/g, "")
-            .replace(/<\/?D>/g, "")
-            .replace(/<\/?B>/g, "")
-            .replace(/<\/?M>/g, ""),
-        opts: options,
+            .replace(/<\/?CB>/g, '')
+            .replace(/<\/?CM>/g, '')
+            .replace(/<\/?CD>/g, '')
+            .replace(/<\/?C>/g, '')
+            .replace(/<\/?D>/g, '')
+            .replace(/<\/?B>/g, '')
+            .replace(/<\/?M>/g, ''),
+        opts: options
     };
 };
 // const imageToBuffer = async (imagePath: string, threshold: number = 60) => {
@@ -90,13 +90,7 @@ export var USBPrinter = {
         return RNUSBPrinter.printRawData(billTo64Buffer(text, opts), function (error) {
             return console.warn(error);
         });
-    },
-    printImage: function (imgUrl, opts) {
-        if (opts === void 0) { opts = {}; }
-        return RNUSBPrinter.printImageData(imgUrl, function (error) {
-            return console.warn(error);
-        });
-    },
+    }
 };
 export var BLEPrinter = {
     init: function () {
@@ -122,8 +116,8 @@ export var BLEPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            var processedText = textPreprocessingIOS(text, false);
+        if (Platform.OS === 'ios') {
+            var processedText = textPreprocessingIOS(text);
             RNBLEPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
@@ -134,8 +128,8 @@ export var BLEPrinter = {
     },
     printBill: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            var processedText = textPreprocessingIOS(text, true);
+        if (Platform.OS === 'ios') {
+            var processedText = textPreprocessingIOS(text);
             RNBLEPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
@@ -143,7 +137,11 @@ export var BLEPrinter = {
                 return console.warn(error);
             });
         }
-    },
+    }
+    // printImage: async (imagePath: string) => {
+    //   const tmp = await imageToBuffer(imagePath);
+    //   RNBLEPrinter.printRawData(tmp, (error: Error) => console.warn(error));
+    // },
 };
 export var NetPrinter = {
     init: function () {
@@ -169,8 +167,8 @@ export var NetPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            var processedText = textPreprocessingIOS(text, false);
+        if (Platform.OS === 'ios') {
+            var processedText = textPreprocessingIOS(text);
             RNNetPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
@@ -181,8 +179,8 @@ export var NetPrinter = {
     },
     printBill: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            var processedText = textPreprocessingIOS(text, true);
+        if (Platform.OS === 'ios') {
+            var processedText = textPreprocessingIOS(text);
             RNNetPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
@@ -191,30 +189,19 @@ export var NetPrinter = {
             });
         }
     },
-    printImage: function (imgUrl, opts) {
+    printImage: function (data, opts, onError) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            RNNetPrinter.printImageData(imgUrl, opts, function (error) { return console.warn(error); });
-        }
-        else {
-            RNNetPrinter.printImageData(imgUrl, function (error) {
-                return console.warn(error);
+        if (Platform.OS === 'ios') {
+            RNNetPrinter.printRawImage(data, opts, function (error) {
+                return onError === null || onError === void 0 ? void 0 : onError(error);
             });
         }
-    },
-    printQrCode: function (qrCode, opts) {
-        if (opts === void 0) { opts = {}; }
-        if (Platform.OS === "ios") {
-            RNNetPrinter.printQrCode(qrCode, opts, function (error) { return console.warn(error); });
+        else {
+            RNNetPrinter.printRawImage(billTo64Buffer(data, opts), function (error) {
+                return onError === null || onError === void 0 ? void 0 : onError(error);
+            });
         }
-         else {
-             RNNetPrinter.printQrCode(qrCode, opts, function (error) {
-                 return console.warn(error);
-             });
-         }
-    },
-    
-
+    }
 };
 export var NetPrinterEventEmitter = new NativeEventEmitter(RNNetPrinter);
 export var RN_THERMAL_RECEIPT_PRINTER_EVENTS;
