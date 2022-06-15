@@ -5,7 +5,9 @@ import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
+import com.pinmi.react.printer.adapter.BLEPrinterAdapter;
 import com.pinmi.react.printer.adapter.PrinterAdapter;
 import com.pinmi.react.printer.adapter.PrinterDevice;
 import com.pinmi.react.printer.adapter.USBPrinterAdapter;
@@ -38,7 +40,8 @@ public class RNUSBPrinterModule extends ReactContextBaseJavaModule implements RN
     @ReactMethod
     @Override
     public void closeConn()  {
-        adapter.closeConnectionIfExists();
+        this.adapter = USBPrinterAdapter.getInstance();
+        this.adapter.closeConnectionIfExists();
     }
 
     @ReactMethod
@@ -64,14 +67,8 @@ public class RNUSBPrinterModule extends ReactContextBaseJavaModule implements RN
 
     @ReactMethod
     @Override
-    public void printImageData(String imageUrl, Callback errorCallback) {
-        adapter.printImageData(imageUrl, errorCallback);
-    }
-
-    @ReactMethod
-    @Override
-    public void printQrCode(String qrCode, Callback errorCallback) {
-        adapter.printQrCode(qrCode, errorCallback);
+    public void printRawImage(String base64Data, ReadableMap options, Callback errorCallback) {
+        adapter.printRawImage(base64Data, options, errorCallback);
     }
 
 

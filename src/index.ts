@@ -258,6 +258,20 @@ export const NetPrinter = {
       );
     }
   },
+
+  printImage: (data: string, opts = {}): void => {
+    if (Platform.OS === "ios") {
+      RNNetPrinter.printRawImage(
+        data,
+        opts,
+        (error: Error) => console.warn(error)
+      );
+    } else {
+      RNNetPrinter.printRawImage(billTo64Buffer(data, opts), (error: Error) =>
+        console.warn(error)
+      );
+    }
+  },
 };
 
 export const NetPrinterEventEmitter = new NativeEventEmitter(RNNetPrinter);

@@ -6,6 +6,7 @@ import android.telecom.Call;
 
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReadableMap;
 
 import java.util.List;
 
@@ -26,7 +27,5 @@ public interface PrinterAdapter {
 
     public void printRawData(String rawBase64Data, Callback errorCallback);
 
-    public void printImageData(String imageUrl, Callback errorCallback);
-
-    public void printQrCode(String qrCode, Callback errorCallback);
+    public void printRawImage(String rawBase64Data, ReadableMap options, Callback errorCallback);
 }

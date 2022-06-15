@@ -1,11 +1,13 @@
 package com.pinmi.react.printer;
 
+import android.os.Debug;
 import android.util.Log;
 
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
 import com.pinmi.react.printer.adapter.BLEPrinterDeviceId;
 import com.pinmi.react.printer.adapter.NetPrinterAdapter;
 import com.pinmi.react.printer.adapter.NetPrinterDeviceId;
@@ -64,19 +66,9 @@ public class RNNetPrinterModule extends ReactContextBaseJavaModule implements RN
 
     @ReactMethod
     @Override
-    public void printImageData(String imageUrl, Callback errorCallback) {
-        Log.v("imageUrl", imageUrl);
-        adapter.printImageData(imageUrl, errorCallback);
+    public void printRawImage(String base64Data, ReadableMap options, Callback errorCallback) {
+        adapter.printRawImage(base64Data, options, errorCallback);
     }
-
-    @ReactMethod
-    @Override
-    public void printQrCode(String qrCode, Callback errorCallback) {
-        Log.v("qrCode", qrCode);
-        adapter.printQrCode(qrCode, errorCallback);
-    }
-
-
 
     @Override
     public String getName() {

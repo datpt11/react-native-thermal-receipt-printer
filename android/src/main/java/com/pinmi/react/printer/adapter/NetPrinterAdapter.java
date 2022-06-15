@@ -1,45 +1,34 @@
 package com.pinmi.react.printer.adapter;
 
+import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Color;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.util.Base64;
 import android.util.Log;
 
-import com.facebook.common.internal.ImmutableMap;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-
+//import com.dantsu.escposprinter.EscPosPrinterCommands;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.encoder.ByteMatrix;
-import com.pinmi.react.printer.R;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Hashtable;
 import java.util.List;
-
-import android.graphics.BitmapFactory;
-
-import androidx.annotation.RequiresApi;
 
 /**
  * Created by xiesubin on 2017/9/22.
@@ -51,19 +40,12 @@ public class NetPrinterAdapter implements PrinterAdapter {
     private String LOG_TAG = "RNNetPrinter";
     private NetPrinterDevice mNetDevice;
 
-    // {TODO- support other ports later}
-    // private int[] PRINTER_ON_PORTS = {515, 3396, 9100, 9303};
+    //    {TODO- support other ports later}
+//    private int[] PRINTER_ON_PORTS = {515, 3396, 9100, 9303};
 
-    private int[] PRINTER_ON_PORTS = { 9100 };
+    private int[] PRINTER_ON_PORTS = {9100};
     private static final String EVENT_SCANNER_RESOLVED = "scannerResolved";
     private static final String EVENT_SCANNER_RUNNING = "scannerRunning";
-
-    private final static char ESC_CHAR = 0x1B;
-    private static byte[] SELECT_BIT_IMAGE_MODE = { 0x1B, 0x2A, 33 };
-    private final static byte[] SET_LINE_SPACE_24 = new byte[] { ESC_CHAR, 0x33, 24 };
-    private final static byte[] SET_LINE_SPACE_32 = new byte[] { ESC_CHAR, 0x33, 32 };
-    private final static byte[] LINE_FEED = new byte[] { 0x0A };
-    private static byte[] CENTER_ALIGN = { 0x1B, 0X61, 0X31 };
 
     private Socket mSocket;
 
@@ -89,8 +71,7 @@ public class NetPrinterAdapter implements PrinterAdapter {
 
     @Override
     public List<PrinterDevice> getDeviceList(Callback errorCallback) {
-        // errorCallback.invoke("do not need to invoke get device list for net
-        // printer");
+        // errorCallback.invoke("do not need to invoke get device list for net printer");
         // Use emitter instancee get devicelist to non block main thread
         this.scan();
         List<PrinterDevice> printerDevices = new ArrayList<>();
@@ -98,28 +79,24 @@ public class NetPrinterAdapter implements PrinterAdapter {
     }
 
     private void scan() {
-        if (isRunning)
-            return;
+        if (isRunning) return;
         new Thread(new Runnable() {
-            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void run() {
                 try {
                     isRunning = true;
                     emitEvent(EVENT_SCANNER_RUNNING, isRunning);
 
-                    WifiManager wifiManager = (WifiManager) mContext.getApplicationContext()
-                            .getSystemService(Context.WIFI_SERVICE);
+                    WifiManager wifiManager = (WifiManager) mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                     String ipAddress = ipToString(wifiManager.getConnectionInfo().getIpAddress());
                     WritableArray array = Arguments.createArray();
 
+
                     String prefix = ipAddress.substring(0, ipAddress.lastIndexOf('.') + 1);
-                    int suffix = Integer
-                            .parseInt(ipAddress.substring(ipAddress.lastIndexOf('.') + 1, ipAddress.length()));
+                    int suffix = Integer.parseInt(ipAddress.substring(ipAddress.lastIndexOf('.') + 1, ipAddress.length()));
 
                     for (int i = 0; i <= 255; i++) {
-                        if (i == suffix)
-                            continue;
+                        if (i == suffix) continue;
                         ArrayList<Integer> ports = getAvailablePorts(prefix + i);
                         if (!ports.isEmpty()) {
                             WritableMap payload = Arguments.createMap();
@@ -145,21 +122,20 @@ public class NetPrinterAdapter implements PrinterAdapter {
 
     private void emitEvent(String eventName, Object data) {
         if (mContext != null) {
-            mContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, data);
+            mContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit(eventName, data);
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private ArrayList<Integer> getAvailablePorts(String address) {
         ArrayList<Integer> ports = new ArrayList<>();
         for (int port : PRINTER_ON_PORTS) {
-            if (crunchifyAddressReachable(address, port))
-                ports.add(port);
+            if (crunchifyAddressReachable(address, port)) ports.add(port);
         }
         return ports;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+
     private static boolean crunchifyAddressReachable(String address, int port) {
         try {
 
@@ -176,15 +152,17 @@ public class NetPrinterAdapter implements PrinterAdapter {
     }
 
     private String ipToString(int ip) {
-        return (ip & 0xFF) + "." + ((ip >> 8) & 0xFF) + "." + ((ip >> 16) & 0xFF) + "." + ((ip >> 24) & 0xFF);
+        return (ip & 0xFF) + "." +
+                ((ip >> 8) & 0xFF) + "." +
+                ((ip >> 16) & 0xFF) + "." +
+                ((ip >> 24) & 0xFF);
     }
 
     @Override
     public void selectDevice(PrinterDeviceId printerDeviceId, Callback sucessCallback, Callback errorCallback) {
         NetPrinterDeviceId netPrinterDeviceId = (NetPrinterDeviceId) printerDeviceId;
 
-        if (this.mSocket != null && !this.mSocket.isClosed()
-                && mNetDevice.getPrinterDeviceId().equals(netPrinterDeviceId)) {
+        if (this.mSocket != null && !this.mSocket.isClosed() && mNetDevice.getPrinterDeviceId().equals(netPrinterDeviceId)) {
             Log.i(LOG_TAG, "already selected device, do not need repeat to connect");
             sucessCallback.invoke(this.mNetDevice.toRNWritableMap());
             return;
@@ -198,8 +176,7 @@ public class NetPrinterAdapter implements PrinterAdapter {
                 this.mNetDevice = new NetPrinterDevice(netPrinterDeviceId.getHost(), netPrinterDeviceId.getPort());
                 sucessCallback.invoke(this.mNetDevice.toRNWritableMap());
             } else {
-                errorCallback.invoke("unable to build connection with host: " + netPrinterDeviceId.getHost()
-                        + ", port: " + netPrinterDeviceId.getPort());
+                errorCallback.invoke("unable to build connection with host: " + netPrinterDeviceId.getHost() + ", port: " + netPrinterDeviceId.getPort());
                 return;
             }
         } catch (IOException e) {
@@ -250,228 +227,258 @@ public class NetPrinterAdapter implements PrinterAdapter {
 
     }
 
-    public static Bitmap getBitmapFromURL(String src) {
-        try {
-            URL url = new URL(src);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream input = connection.getInputStream();
-            Bitmap myBitmap = BitmapFactory.decodeStream(input);
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            myBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-
-            return myBitmap;
-        } catch (IOException e) {
-            // Log exception
-            return null;
-        }
-    }
-
     @Override
-    public void printImageData(final String imageUrl, Callback errorCallback) {
-        final Bitmap bitmapImage = getBitmapFromURL(imageUrl);
-
-        if (bitmapImage == null) {
-            errorCallback.invoke("image not found");
-            return;
-        }
-
+    public void printRawImage(String image, ReadableMap options, Callback errorCallback) {
         if (this.mSocket == null) {
             errorCallback.invoke("bluetooth connection is not built, may be you forgot to connectPrinter");
             return;
         }
+        Log.v(LOG_TAG, "image is:  " + image);
+        final int width = options.getInt("width");
+        byte[] decodeBase64ImageString = Base64.decode(image, Base64.DEFAULT);
+        Bitmap bitmapImage = BitmapFactory.decodeByteArray(decodeBase64ImageString, 0, decodeBase64ImageString.length);
+        Log.d("NetPrinterModule", "decodeBase64ImageString is:  " + decodeBase64ImageString
+                + " and bitmapImage: " + bitmapImage);
 
-        final Socket socket = this.mSocket;
-
-        try {
-            int[][] pixels = getPixelsSlow(bitmapImage);
-
-            OutputStream printerOutputStream = socket.getOutputStream();
-
-            printerOutputStream.write(SET_LINE_SPACE_24);
-            printerOutputStream.write(CENTER_ALIGN);
-
-            for (int y = 0; y < pixels.length; y += 24) {
-                // Like I said before, when done sending data,
-                // the printer will resume to normal text printing
-                printerOutputStream.write(SELECT_BIT_IMAGE_MODE);
-                // Set nL and nH based on the width of the image
-                printerOutputStream.write(
-                        new byte[] { (byte) (0x00ff & pixels[y].length), (byte) ((0xff00 & pixels[y].length) >> 8) });
-                for (int x = 0; x < pixels[y].length; x++) {
-                    // for each stripe, recollect 3 bytes (3 bytes = 24 bits)
-                    printerOutputStream.write(recollectSlice(y, x, pixels));
+        if(bitmapImage !=null){
+            bitmapImage = resizeImage(bitmapImage,width,false);
+            final byte[] initPrinter = initializePrinter();
+            final byte[] cutPrinter = selectCutPagerModerAndCutPager(66,1);
+            final byte[] data = rasterBmpToSendData(0,bitmapImage, width);
+//            final byte[] data = EscPosPrinterCommands.bitmapToBytes(bitmapImage);
+            final Socket socket = this.mSocket;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        OutputStream printerOutputStream = socket.getOutputStream();
+                        printerOutputStream.write(initPrinter,0,initPrinter.length);
+                        printerOutputStream.write(data,0,data.length);
+                        printerOutputStream.write(cutPrinter,0,cutPrinter.length);
+                        printerOutputStream.flush();
+                    } catch (IOException e) {
+                        Log.e(LOG_TAG, "failed to print image" );
+                        e.printStackTrace();
+                    }
                 }
-
-                // Do a line feed, if not the printing will resume on the same line
-                printerOutputStream.write(LINE_FEED);
-            }
-            printerOutputStream.write(SET_LINE_SPACE_32);
-            printerOutputStream.write(LINE_FEED);
-
-            printerOutputStream.flush();
-        } catch (IOException e) {
-            Log.e(LOG_TAG, "failed to print data");
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void printQrCode(String qrCode, Callback errorCallback) {
-        final Bitmap bitmapImage = TextToQrImageEncode(qrCode);
-
-        if (bitmapImage == null) {
-            errorCallback.invoke("image not found");
+            }).start();
+        } else{
+            Log.d("NetPrinterModule", "bitmapImage is null");
             return;
         }
 
-        if (this.mSocket == null) {
-            errorCallback.invoke("bluetooth connection is not built, may be you forgot to connectPrinter");
-            return;
-        }
-
-        final Socket socket = this.mSocket;
-
-        try {
-            int[][] pixels = getPixelsSlow(bitmapImage);
-
-            OutputStream printerOutputStream = socket.getOutputStream();
-
-            printerOutputStream.write(SET_LINE_SPACE_24);
-            printerOutputStream.write(CENTER_ALIGN);
-
-            for (int y = 0; y < pixels.length; y += 24) {
-                // Like I said before, when done sending data,
-                // the printer will resume to normal text printing
-                printerOutputStream.write(SELECT_BIT_IMAGE_MODE);
-                // Set nL and nH based on the width of the image
-                printerOutputStream.write(
-                        new byte[] { (byte) (0x00ff & pixels[y].length), (byte) ((0xff00 & pixels[y].length) >> 8) });
-                for (int x = 0; x < pixels[y].length; x++) {
-                    // for each stripe, recollect 3 bytes (3 bytes = 24 bits)
-                    printerOutputStream.write(recollectSlice(y, x, pixels));
-                }
-
-                // Do a line feed, if not the printing will resume on the same line
-                printerOutputStream.write(LINE_FEED);
-            }
-            printerOutputStream.write(SET_LINE_SPACE_32);
-            printerOutputStream.write(LINE_FEED);
-
-            printerOutputStream.flush();
-        } catch (IOException e) {
-            Log.e(LOG_TAG, "failed to print data");
-            e.printStackTrace();
-        }
     }
 
-    private Bitmap TextToQrImageEncode(String Value) {
 
-        com.google.zxing.Writer writer = new QRCodeWriter();
+    public static byte[] rasterBmpToSendData(final int m, final Bitmap mBitmap, final int pagewidth) {
+        Bitmap bitmap = toGrayscale(mBitmap);
 
-        BitMatrix bitMatrix = null;
-        try {
-            bitMatrix = writer.encode(Value, com.google.zxing.BarcodeFormat.QR_CODE, 250, 250,
-                    ImmutableMap.of(EncodeHintType.MARGIN, 1));
-            int width = 250;
-            int height = 250;
-            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        bitmap = convertGreyImgByFloyd(bitmap);
 
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    bmp.setPixel(i, j, bitMatrix.get(i, j) ? Color.BLACK : Color.WHITE);
+        final int width = bitmap.getWidth();
+        final int height = bitmap.getHeight();
+        final int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+        final byte[] data = getbmpdata(pixels, width, height);
+        final int n = (width + 7) / 8;
+        final byte xL = (byte)(n % 256);
+        final byte xH = (byte)(n / 256);
+        final int x = (height + 23) / 24;
+        final List<Byte> list = new ArrayList<Byte>();
+        final byte[] head = { 29, 118, 48, (byte)m, xL, xH, 24, 0 };
+        int mL = 0;
+        int mH = 0;
+        if (width >= pagewidth) {
+            mL = 0;
+            mH = 0;
+        } else {
+            mL = (pagewidth - width) / 2 % 256;
+            mH = (pagewidth - width) / 2 / 256;
+        }
+
+        final byte[] aligndata = setAbsolutePrintPosition(mL, mH);
+        for (int i = 0; i < x; ++i) {
+            byte[] newdata;
+            if (i == x - 1) {
+                if (height % 24 == 0) {
+                    head[6] = 24;
+                    newdata = new byte[n * 24];
+                    System.arraycopy(data, 24 * i * n, newdata, 0, 24 * n);
+                }
+                else {
+                    head[6] = (byte)(height % 24);
+                    newdata = new byte[height % 24 * n];
+                    System.arraycopy(data, 24 * i * n, newdata, 0, height % 24 * n);
                 }
             }
-            return bmp;
-        } catch (WriterException e) {
-            // Log.e("QR ERROR", ""+e);
-
-        }
-
-        return null;
-    }
-
-    public static int[][] getPixelsSlow(Bitmap image2) {
-
-        Bitmap image = resizeTheImageForPrinting(image2);
-
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int[][] result = new int[height][width];
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                result[row][col] = getRGB(image, col, row);
+            else {
+                newdata = new byte[n * 24];
+                System.arraycopy(data, 24 * i * n, newdata, 0, 24 * n);
             }
-        }
-        return result;
-    }
-
-    private byte[] recollectSlice(int y, int x, int[][] img) {
-        byte[] slices = new byte[] { 0, 0, 0 };
-        for (int yy = y, i = 0; yy < y + 24 && i < 3; yy += 8, i++) {
-            byte slice = 0;
-            for (int b = 0; b < 8; b++) {
-                int yyy = yy + b;
-                if (yyy >= img.length) {
-                    continue;
+            if (width < pagewidth) {
+                byte[] array;
+                for (int length = (array = aligndata).length, k = 0; k < length; ++k) {
+                    final byte b = array[k];
+                    list.add(b);
                 }
-                int col = img[yyy][x];
-                boolean v = shouldPrintColor(col);
-                slice |= (byte) ((v ? 1 : 0) << (7 - b));
             }
-            slices[i] = slice;
-        }
-        return slices;
-    }
-
-    private boolean shouldPrintColor(int col) {
-        final int threshold = 127;
-        int a, r, g, b, luminance;
-        a = (col >> 24) & 0xff;
-        if (a != 0xff) {// Ignore transparencies
-            return false;
-        }
-        r = (col >> 16) & 0xff;
-        g = (col >> 8) & 0xff;
-        b = col & 0xff;
-
-        luminance = (int) (0.299 * r + 0.587 * g + 0.114 * b);
-
-        return luminance < threshold;
-    }
-
-    public static Bitmap resizeTheImageForPrinting(Bitmap image) {
-        // making logo size 150 or less pixels
-        int width = image.getWidth();
-        int height = image.getHeight();
-        if (width > 200 || height > 200) {
-            if (width > height) {
-                float decreaseSizeBy = (200.0f / width);
-                return getBitmapResized(image, decreaseSizeBy);
-            } else {
-                float decreaseSizeBy = (200.0f / height);
-                return getBitmapResized(image, decreaseSizeBy);
+            byte[] array2;
+            for (int length2 = (array2 = head).length, l = 0; l < length2; ++l) {
+                final byte b = array2[l];
+                list.add(b);
+            }
+            byte[] array3;
+            for (int length3 = (array3 = newdata).length, n2 = 0; n2 < length3; ++n2) {
+                final byte b = array3[n2];
+                list.add(b);
             }
         }
-        return image;
+        final byte[] byteData = new byte[list.size()];
+        for (int j = 0; j < byteData.length; ++j) {
+            byteData[j] = list.get(j);
+        }
+        return byteData;
     }
 
-    public static int getRGB(Bitmap bmpOriginal, int col, int row) {
-        // get one pixel color
-        int pixel = bmpOriginal.getPixel(col, row);
-        // retrieve color of all channels
-        int R = Color.red(pixel);
-        int G = Color.green(pixel);
-        int B = Color.blue(pixel);
-        return Color.rgb(R, G, B);
+    private static Bitmap toGrayscale(final Bitmap bmpOriginal) {
+        final int height = bmpOriginal.getHeight();
+        final int width = bmpOriginal.getWidth();
+        final Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+        final Canvas c = new Canvas(bmpGrayscale);
+        final Paint paint = new Paint();
+        final ColorMatrix cm = new ColorMatrix();
+        cm.setSaturation(0.0f);
+        final ColorMatrixColorFilter f = new ColorMatrixColorFilter(cm);
+        paint.setColorFilter((ColorFilter)f);
+        c.drawBitmap(bmpOriginal, 0.0f, 0.0f, paint);
+        return bmpGrayscale;
     }
 
-    public static Bitmap getBitmapResized(Bitmap image, float decreaseSizeBy) {
-        Bitmap resized = Bitmap.createScaledBitmap(image, (int) (image.getWidth() * decreaseSizeBy),
-                (int) (image.getHeight() * decreaseSizeBy), true);
-        return resized;
+    private static Bitmap convertGreyImgByFloyd(final Bitmap img) {
+        final int width = img.getWidth();
+        final int height = img.getHeight();
+        final int[] pixels = new int[width * height];
+        img.getPixels(pixels, 0, width, 0, 0, width, height);
+        final int[] gray = new int[height * width];
+        for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; ++j) {
+                final int grey = pixels[width * i + j];
+                final int red = (grey & 0xFF0000) >> 16;
+                gray[width * i + j] = red;
+            }
+        }
+        int e = 0;
+        for (int k = 0; k < height; ++k) {
+            for (int l = 0; l < width; ++l) {
+                final int g = gray[width * k + l];
+                if (g >= 128) {
+                    pixels[width * k + l] = -1;
+                    e = g - 255;
+                }
+                else {
+                    pixels[width * k + l] = -16777216;
+                    e = g - 0;
+                }
+                if (l < width - 1 && k < height - 1) {
+                    final int[] array = gray;
+                    final int n = width * k + l + 1;
+                    array[n] += 3 * e / 8;
+                    final int[] array2 = gray;
+                    final int n2 = width * (k + 1) + l;
+                    array2[n2] += 3 * e / 8;
+                    final int[] array3 = gray;
+                    final int n3 = width * (k + 1) + l + 1;
+                    array3[n3] += e / 4;
+                }
+                else if (l == width - 1 && k < height - 1) {
+                    final int[] array4 = gray;
+                    final int n4 = width * (k + 1) + l;
+                    array4[n4] += 3 * e / 8;
+                }
+                else if (l < width - 1 && k == height - 1) {
+                    final int[] array5 = gray;
+                    final int n5 = width * k + l + 1;
+                    array5[n5] += e / 4;
+                }
+            }
+        }
+        final Bitmap mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+        mBitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+        return mBitmap;
     }
 
+    private static byte[] getbmpdata(final int[] b, final int w, final int h) {
+        final int n = (w + 7) / 8;
+        final byte[] data = new byte[n * h];
+        final byte mask = 1;
+        for (int y = 0; y < h; ++y) {
+            for (int x = 0; x < n * 8; ++x) {
+                if (x < w) {
+                    if ((b[y * w + x] & 0xFF0000) >> 16 != 0) {
+                        final byte[] array = data;
+                        final int n2 = y * n + x / 8;
+                        array[n2] |= (byte)(mask << 7 - x % 8);
+                    }
+                }
+                else if (x >= w) {
+                    final byte[] array2 = data;
+                    final int n3 = y * n + x / 8;
+                    array2[n3] |= (byte)(mask << 7 - x % 8);
+                }
+            }
+        }
+        for (int i = 0; i < data.length; ++i) {
+            data[i] ^= -1;
+        }
+        return data;
+    }
+
+    public static byte[] setAbsolutePrintPosition(final int m, final int n) {
+        final byte[] data = { 27, 36, (byte)m, (byte)n };
+        return data;
+    }
+
+
+    public static byte[] initializePrinter() {
+        final byte[] data = { 27, 64 };
+        return data;
+    }
+
+    public static byte[] selectCutPagerModerAndCutPager(final int m, final int n) {
+        if (m != 66) {
+            return new byte[0];
+        }
+        final byte[] data = { 29, 86, (byte)m, (byte)n };
+        return data;
+    }
+
+    public static Bitmap resizeImage(Bitmap bitmap, int w,boolean ischecked)
+    {
+
+        Bitmap BitmapOrg = bitmap;
+        Bitmap resizedBitmap = null;
+        int width = BitmapOrg.getWidth();
+        int height = BitmapOrg.getHeight();
+        if (width<=w) {
+            return bitmap;
+        }
+        if (!ischecked) {
+            int newWidth = w;
+            int newHeight = height*w/width;
+
+            float scaleWidth = ((float) newWidth) / width;
+            float scaleHeight = ((float) newHeight) / height;
+
+            Matrix matrix = new Matrix();
+            matrix.postScale(scaleWidth, scaleHeight);
+            // if you want to rotate the Bitmap
+            // matrix.postRotate(45);
+            resizedBitmap = Bitmap.createBitmap(BitmapOrg, 0, 0, width,
+                    height, matrix, true);
+        }else {
+            resizedBitmap=Bitmap.createBitmap(BitmapOrg, 0, 0, w, height);
+        }
+
+        return resizedBitmap;
+    }
 }
