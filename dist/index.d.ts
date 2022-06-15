@@ -1,4 +1,3 @@
-import { NativeEventEmitter } from "react-native";
 export interface PrinterOptions {
     beep?: boolean;
     cut?: boolean;
@@ -19,6 +18,7 @@ export interface INetPrinter {
     host: string;
     port: number;
 }
+export declare type ErrorFn = (error: Error) => void;
 export declare const USBPrinter: {
     init: () => Promise<void>;
     getDeviceList: () => Promise<IUSBPrinter[]>;
@@ -26,8 +26,6 @@ export declare const USBPrinter: {
     closeConn: () => Promise<void>;
     printText: (text: string, opts?: PrinterOptions) => void;
     printBill: (text: string, opts?: PrinterOptions) => void;
-    printImage: (imgUrl: string, opts?: {}) => void;
-    printQrCode: (qrCode: string, opts?: {}) => void;
 };
 export declare const BLEPrinter: {
     init: () => Promise<void>;
@@ -36,7 +34,6 @@ export declare const BLEPrinter: {
     closeConn: () => Promise<void>;
     printText: (text: string, opts?: PrinterOptions) => void;
     printBill: (text: string, opts?: PrinterOptions) => void;
-    printQrCode: (qrCode: string, opts?: {}) => void;
 };
 export declare const NetPrinter: {
     init: () => Promise<void>;
@@ -45,10 +42,9 @@ export declare const NetPrinter: {
     closeConn: () => Promise<void>;
     printText: (text: string, opts?: {}) => void;
     printBill: (text: string, opts?: {}) => void;
-    printImage: (imgUrl: string, opts?: {}) => void;
-    printQrCode: (qrCode: string, opts?: {}) => void;
+    printImage: (data: string, opts?: {}, onError?: ErrorFn | undefined) => void;
 };
-export declare const NetPrinterEventEmitter: NativeEventEmitter;
+export declare const NetPrinterEventEmitter: any;
 export declare enum RN_THERMAL_RECEIPT_PRINTER_EVENTS {
     EVENT_NET_PRINTER_SCANNED_SUCCESS = "scannerResolved",
     EVENT_NET_PRINTER_SCANNING = "scannerRunning",
